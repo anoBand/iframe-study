@@ -1,0 +1,78 @@
+<!-- mfe.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-amber-50 p-8 h-screen">
+    <div class="max-w-lg mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-amber-200">
+        <div class="bg-amber-500 p-6 text-white flex items-center justify-between">
+            <h2 class="text-xl font-extrabold flex items-center gap-3">
+                <i data-lucide="settings" class="w-6 h-6"></i> 사용자 프로필 설정 (MFE)
+            </h2>
+            <span class="text-xs font-bold bg-white/20 px-3 py-1 rounded-full uppercase tracking-tighter">Micro Front End</span>
+        </div>
+
+        <div class="p-8 space-y-8">
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-extrabold text-amber-900 mb-2.5 uppercase tracking-widest">사용자 이름</label>
+                    <input type="text" id="username" placeholder="이름을 입력하세요" class="w-full bg-amber-50 border-amber-100 rounded-xl px-5 py-3.5 text-base font-medium focus:ring-2 focus:ring-amber-500 outline-none transition-all placeholder:text-amber-200">
+                </div>
+                <div>
+                    <label class="block text-sm font-extrabold text-amber-900 mb-2.5 uppercase tracking-widest">테마 색상</label>
+                    <div class="flex gap-4">
+                        <button onclick="setTheme('blue')" class="w-10 h-10 rounded-full bg-blue-500 ring-offset-4 hover:ring-2 transition-all shadow-md"></button>
+                        <button onclick="setTheme('amber')" class="w-10 h-10 rounded-full bg-amber-500 ring-offset-4 hover:ring-2 transition-all shadow-md"></button>
+                        <button onclick="setTheme('emerald')" class="w-10 h-10 rounded-full bg-emerald-500 ring-offset-4 hover:ring-2 transition-all shadow-md"></button>
+                        <button onclick="setTheme('rose')" class="w-10 h-10 rounded-full bg-rose-500 ring-offset-4 hover:ring-2 transition-all shadow-md"></button>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="saveSettings()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-4 rounded-2xl text-lg transition-all flex items-center justify-center gap-3 shadow-xl shadow-amber-100 active:scale-[0.98]">
+                <i data-lucide="save" class="w-5 h-5"></i> 설정 저장하기
+            </button>
+
+            <div class="p-6 bg-amber-50 rounded-2xl border border-amber-100 space-y-3">
+                <p class="text-sm text-amber-800 leading-relaxed font-medium">
+                    <strong class="block mb-2 font-black text-amber-900 flex items-center gap-2">
+                        <i data-lucide="info" class="w-4 h-4"></i> 데이터 동기화 및 영속성
+                    </strong>
+                    이 iframe에서 <code class="bg-white/80 px-1.5 py-0.5 rounded font-bold">localStorage</code>를 수정하면, 부모 창은 <code class="bg-white/80 px-1.5 py-0.5 rounded font-bold">storage</code> 이벤트를 감지하여 실시간으로 UI를 업데이트합니다. 
+                    <br><br>
+                    저장된 데이터는 브라우저 저장소에 영구 보관되므로, <strong>페이지 새로고침이나 재방문 시에도 설정이 유지</strong>됩니다.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // 초기 데이터 로드
+        window.onload = () => {
+            const savedName = localStorage.getItem('iframe-study-username');
+            if (savedName) document.getElementById('username').value = savedName;
+        };
+
+        function setTheme(color) {
+            localStorage.setItem('iframe-study-theme', color);
+            console.log(`[MFE] Theme changed to ${color}`);
+            // storage 이벤트는 다른 창에서만 발생하므로 직접 트리거하거나 postMessage를 병행할 수 있음
+            // 여기서는 단순 storage 이벤트를 부모가 감지하는 시나리오
+        }
+
+        function saveSettings() {
+            const name = document.getElementById('username').value;
+            localStorage.setItem('iframe-study-username', name);
+            console.log(`[MFE] Username saved: ${name}`);
+            
+            // 부모에게 명시적으로 알릴 수도 있음
+            window.parent.postMessage({ type: 'SYNC_COMPLETE', user: name }, window.location.origin);
+        }
+    </script>
+</body>
+</html>

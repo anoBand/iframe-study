@@ -1,0 +1,140 @@
+<!-- yt.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-900 p-6 h-screen overflow-hidden flex flex-col items-center justify-center">
+    <div class="max-w-4xl w-full space-y-4">
+        <div class="flex items-center justify-between text-white">
+            <h2 class="text-xl font-bold flex items-center gap-2">
+                <i data-lucide="youtube" class="text-red-500"></i> YouTube Player API
+            </h2>
+            <div id="player-status" class="px-3 py-1 bg-white/10 rounded-full text-xs font-medium">Initializing...</div>
+        </div>
+
+        <!-- 플레이어 영역 -->
+        <div class="aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 pointer-events-none">
+            <div id="player"></div>
+        </div>
+
+        <div class="p-5 bg-white/5 rounded-2xl border border-white/10 space-y-4 shadow-inner">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="info" class="w-4 h-4 text-blue-400"></i>
+                Technical Inter-communication Flow
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] leading-relaxed">
+                <!-- Parent to Child -->
+                <div class="space-y-2 p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                    <p class="font-bold text-blue-300 flex items-center gap-1">
+                        <i data-lucide="arrow-down" class="w-3 h-3"></i> Parent → Child (Command)
+                    </p>
+                    <p class="text-slate-400">
+                        부모 페이지(`index.html`)에서 버튼을 클릭하면 <code class="text-blue-300 bg-blue-900/30 px-1 rounded">postMessage</code>를 통해 제어 명령({type: 'YT_CONTROL', action: 'PLAY'})을 전송합니다.
+                    </p>
+                </div>
+
+                <!-- Child to Parent -->
+                <div class="space-y-2 p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+                    <p class="font-bold text-emerald-300 flex items-center gap-1">
+                        <i data-lucide="arrow-up" class="w-3 h-3"></i> Child → Parent (State)
+                    </p>
+                    <p class="text-slate-400">
+                        YouTube IFrame API가 재생 상태 변화를 감지하면, 이 iframe은 즉시 부모에게 현재 상태({type: 'YT_STATUS', state: 'Playing'})를 보고하여 상단 배지 UI를 동기화합니다.
+                    </p>
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-white/5 flex justify-center gap-4 text-[10px] font-mono text-slate-500">
+                <span class="flex items-center gap-1"><i data-lucide="shield-check" class="w-3 h-3"></i> Origin Verification Active</span>
+                <span class="flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> Event-Driven Sync</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // YouTube API 비동기 로드
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        var player;
+        const statusEl = document.getElementById('player-status');
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '100%',
+                width: '100%',
+                videoId: 'dQw4w9WgXcQ',
+                playerVars: {
+                    'playsinline': 1,
+                    'controls': 0, // 기본 컨트롤러 숨김
+                    'disablekb': 1,
+                    'modestbranding': 1,
+                    'rel': 0,
+                    'origin': window.location.origin
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            statusEl.textContent = 'Ready to Play';
+            lucide.createIcons();
+            console.log('[YT] Player Ready');
+        }
+
+        function onPlayerStateChange(event) {
+            let state = 'Unknown';
+            switch(event.data) {
+                case YT.PlayerState.PLAYING: state = 'Playing'; break;
+                case YT.PlayerState.PAUSED: state = 'Paused'; break;
+                case YT.PlayerState.BUFFERING: state = 'Buffering'; break;
+            }
+            statusEl.textContent = state;
+            
+            // 부모에게 상태 알림
+            window.parent.postMessage({ type: 'YT_STATUS', state: state }, window.location.origin);
+        }
+
+        // 부모로부터의 명령 수신
+        window.addEventListener('message', (event) => {
+            if (event.origin !== window.location.origin) return;
+            
+            const { type, action, value } = event.data;
+            if (type !== 'YT_CONTROL') return;
+
+            console.log(`[YT] Received command: ${action}`);
+
+            switch(action) {
+                case 'PLAY':
+                    player.playVideo();
+                    break;
+                case 'PAUSE':
+                    player.pauseVideo();
+                    break;
+                case 'VOLUME':
+                    player.setVolume(value);
+                    break;
+                case 'MUTE':
+                    player.mute();
+                    break;
+                case 'UNMUTE':
+                    player.unMute();
+                    break;
+                case 'SEEK':
+                    const currentTime = player.getCurrentTime();
+                    player.seekTo(currentTime + value, true);
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>

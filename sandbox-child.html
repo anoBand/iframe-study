@@ -1,0 +1,43 @@
+<!-- sandbox-child.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: sans-serif; }
+    </style>
+</head>
+<body class="bg-white p-4 h-full flex flex-col items-center justify-center space-y-4">
+    <div id="status-card" class="bg-gray-50 border border-gray-100 p-4 rounded-xl text-center w-full">
+        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">스크립트 상태</h4>
+        <div id="status-msg" class="text-gray-800 font-semibold italic">스크립트 대기 중...</div>
+    </div>
+
+    <button onclick="testFunction()" class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold hover:bg-slate-700 transition-colors shadow-md">
+        자바스크립트 실행
+    </button>
+
+    <div class="text-[10px] text-gray-400 text-center">
+        이 버튼을 클릭했을 때 <code class="bg-gray-100 px-1 rounded">alert()</code>가 발생한다면<br>스크립트가 허용된 상태입니다.
+    </div>
+
+    <script>
+        // 1. 자동 실행 테스트
+        try {
+            document.getElementById('status-msg').textContent = '✅ 스크립트 실행 활성화';
+            document.getElementById('status-card').classList.add('bg-green-50', 'border-green-200');
+            document.getElementById('status-msg').classList.remove('italic');
+            
+            // alert('로드 즉시 스크립트 실행됨!'); // 너무 방해될 수 있어 주석 처리하고 메시지로 갈음
+        } catch (e) {
+            console.log('Script execution blocked by sandbox.');
+        }
+
+        function testFunction() {
+            alert('샌드박스가 뚫려 있습니다! (스크립트 실행 가능)');
+        }
+    </script>
+</body>
+</html>

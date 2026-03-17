@@ -1,0 +1,444 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive iframe Showcase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style type="text/tailwindcss">
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .active-menu { @apply bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100 font-bold; }
+        .menu-item { @apply flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 font-medium text-left; }
+        #main-iframe { transition: opacity 0.3s ease-in-out; }
+        .loading { opacity: 0.3; filter: blur(2px); }
+        .toast { transform: translateY(100px); opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .toast.show { transform: translateY(0); opacity: 1; }
+    </style>
+</head>
+<body class="bg-slate-50 h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-72 bg-white border-r border-slate-200 flex flex-col shadow-sm z-20">
+        <div class="p-8 border-b border-slate-100">
+            <h1 class="text-xl font-bold text-slate-900 flex items-center gap-3">
+                <div class="bg-blue-600 p-2 rounded-lg text-white">
+                    <i data-lucide="layers" class="w-5 h-5"></i>
+                </div>
+                <span>iframe Show</span>
+            </h1>
+            <p class="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">Interactive Dashboard v1.0</p>
+        </div>
+        
+        <nav class="flex-1 p-6 space-y-2 overflow-y-auto">
+            <button onclick="loadCase('yt.html', this)" class="menu-item w-full active-menu">
+                <i data-lucide="youtube" class="w-5 h-5"></i>
+                <span>YouTube API</span>
+            </button>
+            <button onclick="loadCase('sandbox.html', this)" class="menu-item w-full">
+                <i data-lucide="shield-check" class="w-5 h-5"></i>
+                <span>Sandbox Isolation</span>
+            </button>
+            <button onclick="loadCase('widget.html', this)" class="menu-item w-full">
+                <i data-lucide="component" class="w-5 h-5"></i>
+                <span>Third-party Widget</span>
+            </button>
+            <button onclick="loadCase('mfe.html', this)" class="menu-item w-full">
+                <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                <span>MFE Data Sync</span>
+            </button>
+            <button onclick="loadCase('postMessage.html', this)" class="menu-item w-full">
+                <i data-lucide="message-square" class="w-5 h-5"></i>
+                <span>Real-time Messaging</span>
+            </button>
+        </nav>
+
+        <div class="p-6 border-t border-slate-100">
+            <div id="user-display" class="bg-slate-50 p-4 rounded-2xl flex items-center gap-3 border border-slate-100">
+                <div id="user-avatar" class="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-500 font-bold">?</div>
+                <div class="overflow-hidden">
+                    <p class="text-xs font-bold text-slate-700 truncate" id="display-username">GUEST USER</p>
+                    <p class="text-[10px] text-slate-400">System Ready</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col relative overflow-hidden">
+        <!-- Progress Bar -->
+        <div id="progress-bar" class="absolute top-0 left-0 h-1 bg-blue-500 w-0 transition-all duration-300 z-30"></div>
+
+        <!-- Header -->
+        <header class="bg-white border-b border-slate-200 px-10 py-5 flex justify-between items-center z-10">
+            <div>
+                <h2 id="current-title" class="text-xl font-bold text-slate-800">YouTube Player API</h2>
+                <div id="url-bar" class="text-[10px] font-mono text-slate-400 mt-1 flex items-center gap-1">
+                    <i data-lucide="link" class="w-3 h-3"></i>
+                    <span>loading...</span>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-6">
+                <!-- YouTube Controls -->
+                <div id="yt-controls" class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl shadow-lg">
+                    <button onclick="controlYT('SEEK', -5)" class="p-2 hover:bg-white/10 rounded-lg text-white transition-colors" title="5초 뒤로">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                    <button id="play-pause-toggle" onclick="togglePlayPause()" class="p-2 hover:bg-white/10 rounded-lg text-white transition-colors" title="재생/일시정지">
+                        <i data-lucide="play" class="w-4 h-4 fill-current" id="play-pause-icon"></i>
+                    </button>
+                    <button onclick="controlYT('SEEK', 5)" class="p-2 hover:bg-white/10 rounded-lg text-white transition-colors" title="5초 앞으로">
+                        <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+                    </button>
+                    <div class="w-px h-4 bg-white/20 mx-1"></div>
+                    
+                    <!-- Improved Volume Control -->
+                    <div class="relative group flex items-center">
+                        <button id="mute-toggle" onclick="toggleMute()" class="p-2 hover:bg-white/10 rounded-lg text-white transition-colors" title="음소거 토글">
+                            <i data-lucide="volume-2" class="w-4 h-4" id="volume-icon"></i>
+                        </button>
+                        <!-- Volume Slider Dropdown -->
+                        <div class="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover:block z-50">
+                            <div class="bg-slate-800 p-3 rounded-xl shadow-2xl border border-white/10 flex flex-col items-center gap-2">
+                                <input type="range" min="0" max="100" value="100" step="1" 
+                                    class="w-24 h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                    oninput="controlYT('VOLUME', this.value); updateVolUI(this.value)">
+                                <span id="vol-percentage" class="text-[10px] font-mono text-white/70">100%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- postMessage Input -->
+                <div id="messaging-controls" class="hidden flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100">
+                    <input type="text" id="parent-input" placeholder="메시지 입력..." class="text-xs px-3 py-2 rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-400 w-48 outline-none bg-white">
+                    <button onclick="sendMessageToChild()" class="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-100">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Widget Specific Controls -->
+                <div id="widget-controls" class="hidden flex items-center gap-3">
+                    <button onclick="applyCoupon()" class="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl border border-amber-200 text-xs font-bold hover:bg-amber-200 transition-colors">
+                        <i data-lucide="ticket" class="w-4 h-4"></i>
+                        <span>쿠폰 적용 (-₩5,000)</span>
+                    </button>
+                    <button onclick="polluteStyles()" class="flex items-center gap-2 px-4 py-2 bg-rose-100 text-rose-700 rounded-xl border border-rose-200 text-xs font-bold hover:bg-rose-200 transition-colors">
+                        <i data-lucide="flame" class="w-4 h-4"></i>
+                        <span>스타일 오염 시도</span>
+                    </button>
+                </div>
+
+                <div id="status-badge" class="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 text-xs font-bold">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span>ACTIVE</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- iframe Viewport -->
+        <div class="flex-1 p-10 overflow-y-auto bg-slate-50/50">
+            <div class="max-w-7xl mx-auto h-full flex flex-col">
+                <!-- Browser-like Frame -->
+                <div class="bg-white rounded-3xl shadow-2xl shadow-slate-200 border border-slate-200 h-full flex flex-col overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-rose-400"></div>
+                            <div class="w-3 h-3 rounded-full bg-amber-400"></div>
+                            <div class="w-3 h-3 rounded-full bg-emerald-400"></div>
+                        </div>
+                        <div class="flex-1 bg-white border border-slate-200 rounded-full px-4 py-1.5 text-[10px] text-slate-400 flex items-center gap-2 truncate shadow-inner">
+                            <i data-lucide="lock" class="w-3 h-3 text-emerald-500"></i>
+                            <span id="url-display">https://iframe-showcase.local/yt.html</span>
+                        </div>
+                    </div>
+                        <div class="flex-1 relative bg-white">
+                            <iframe id="main-iframe" src="yt.html" class="w-full h-full border-none" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>
+                        </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification Area -->
+        <div id="toast-container" class="fixed bottom-8 right-8 z-50 pointer-events-none space-y-3"></div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        const iframe = document.getElementById('main-iframe');
+        const progressBar = document.getElementById('progress-bar');
+        const currentTitle = document.getElementById('current-title');
+        const urlBarText = document.querySelector('#url-bar span');
+        const urlDisplay = document.getElementById('url-display');
+        const ytControls = document.getElementById('yt-controls');
+        const messagingControls = document.getElementById('messaging-controls');
+        const widgetControls = document.getElementById('widget-controls');
+        const statusBadgeText = document.querySelector('#status-badge span:last-child');
+
+        function loadCase(url, element) {
+            // Update Menu UI
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active-menu'));
+            element.classList.add('active-menu');
+            
+            const title = element.querySelector('span').textContent;
+            currentTitle.textContent = title;
+            urlBarText.textContent = window.location.origin + '/' + url;
+            urlDisplay.textContent = `https://iframe-showcase.local/${url}`;
+
+            // Reset flags
+            couponApplied = false;
+
+            // Show/Hide page-specific controls
+            ytControls.classList.toggle('hidden', url !== 'yt.html');
+            messagingControls.classList.toggle('hidden', url !== 'postMessage.html');
+            widgetControls.classList.toggle('hidden', url !== 'widget.html');
+
+            // Loading Animation
+            progressBar.style.width = '30%';
+            iframe.classList.add('loading');
+            
+            iframe.src = url;
+            statusBadgeText.textContent = 'CONNECTING...';
+            
+            showToast('Loading', `${title} 모듈을 로드하는 중입니다.`, 'info');
+        }
+
+        iframe.onload = () => {
+            progressBar.style.width = '100%';
+            iframe.classList.remove('loading');
+            statusBadgeText.textContent = 'ACTIVE';
+            setTimeout(() => {
+                progressBar.style.width = '0%';
+            }, 500);
+            console.log(`[Host] iFrame loaded: ${iframe.src}`);
+        };
+
+        // Widget Control Functions
+        let isPolluted = false;
+        let pollutionStyle = null;
+        let couponApplied = false;
+
+        function applyCoupon() {
+            if (couponApplied) {
+                showToast('Already Applied', '중복 적용 불가합니다.', 'warning');
+                return;
+            }
+
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ 
+                    type: 'UPDATE_AMOUNT', 
+                    amount: 45000,
+                    original: 50000 
+                }, window.location.origin);
+                showToast('Coupon Applied', '쿠폰이 적용되어 결제 금액이 변경되었습니다.', 'success');
+                couponApplied = true;
+            }
+        }
+
+        function polluteStyles() {
+            if (isPolluted) {
+                if (pollutionStyle) {
+                    pollutionStyle.remove();
+                    pollutionStyle = null;
+                }
+                isPolluted = false;
+                const pollBtn = document.querySelector('#widget-controls button:last-child span');
+                const pollIcon = document.querySelector('#widget-controls button:last-child i');
+                pollBtn.textContent = '스타일 오염 시도';
+                pollIcon.setAttribute('data-lucide', 'flame');
+                lucide.createIcons();
+                showToast('Styles Restored', '부모의 버튼 스타일이 복구되었습니다.', 'info');
+                return;
+            }
+
+            // 부모 페이지의 모든 버튼을 빨간색으로 강제 변경하는 스타일 주입
+            pollutionStyle = document.createElement('style');
+            pollutionStyle.innerHTML = `
+                button:not(#widget-controls button) { 
+                    background-color: #ef4444 !important; 
+                    color: white !important;
+                    border: 2px solid #991b1b !important;
+                }
+            `;
+            document.head.appendChild(pollutionStyle);
+            isPolluted = true;
+            
+            const pollBtn = document.querySelector('#widget-controls button:last-child span');
+            const pollIcon = document.querySelector('#widget-controls button:last-child i');
+            pollBtn.textContent = '스타일 복구하기';
+            pollIcon.setAttribute('data-lucide', 'refresh-ccw');
+            lucide.createIcons();
+            
+            showToast('Style Pollution', '부모의 모든 버튼 스타일을 오염시켰습니다. iframe 내부는 어떤가요?', 'warning');
+        }
+
+        // YouTube Remote Control
+        let isMuted = false;
+        let currentYTState = 'PAUSED';
+
+        function controlYT(action, value) {
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'YT_CONTROL', action, value }, window.location.origin);
+            }
+        }
+
+        function togglePlayPause() {
+            const action = (currentYTState === 'PLAYING') ? 'PAUSE' : 'PLAY';
+            controlYT(action);
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            const action = isMuted ? 'MUTE' : 'UNMUTE';
+            const icon = isMuted ? 'volume-x' : 'volume-2';
+            
+            controlYT(action);
+            
+            // Update Icon
+            const iconEl = document.getElementById('volume-icon');
+            iconEl.setAttribute('data-lucide', icon);
+            lucide.createIcons();
+            
+            showToast(isMuted ? 'Muted' : 'Unmuted', `음소거가 ${isMuted ? '설정' : '해제'}되었습니다.`, 'info');
+        }
+
+        function updateVolUI(value) {
+            document.getElementById('vol-percentage').textContent = `${value}%`;
+        }
+
+        // postMessage: Parent -> Child
+        function sendMessageToChild() {
+            const input = document.getElementById('parent-input');
+            const message = input.value;
+            if (message && iframe.contentWindow) {
+                iframe.contentWindow.postMessage(message, window.location.origin);
+                input.value = '';
+                showToast('Sent', '자식 iframe에게 메시지를 전송했습니다.', 'success');
+            }
+        }
+
+        // Unified Message Receiver
+        window.addEventListener('message', (event) => {
+            if (event.origin !== window.location.origin) return;
+            
+            const data = event.data;
+            console.log('[Host] Received message:', data);
+
+            // YouTube Status Update
+            if (data.type === 'YT_STATUS') {
+                currentYTState = data.state.toUpperCase();
+                statusBadgeText.textContent = currentYTState;
+                
+                // Update Play/Pause Icon
+                const iconEl = document.getElementById('play-pause-icon');
+                if (currentYTState === 'PLAYING') {
+                    iconEl.setAttribute('data-lucide', 'pause');
+                } else {
+                    iconEl.setAttribute('data-lucide', 'play');
+                }
+                lucide.createIcons();
+                return;
+            }
+
+            // Payment Success Update
+            if (data.type === 'PAYMENT_SUCCESS') {
+                showToast('Payment Successful', `결제가 완료되었습니다! (주문번호: ${data.orderId})`, 'success');
+                statusBadgeText.textContent = 'PAID';
+                return;
+            }
+
+            // MFE Sync Update
+            if (data.type === 'SYNC_COMPLETE') {
+                showToast('Sync Complete', `사용자 정보가 업데이트되었습니다: ${data.user}`, 'success');
+                updateUserDisplay();
+                return;
+            }
+
+            // Normal String Message (postMessage demo)
+            if (typeof data === 'string') {
+                showToast('New Message', `자식 iframe: "${data}"`, 'indigo');
+            }
+        });
+
+        // localStorage Sync (storage event)
+        window.addEventListener('storage', (event) => {
+            console.log('[Host] Storage changed:', event.key);
+            if (event.key === 'iframe-study-username' || event.key === 'iframe-study-theme') {
+                updateUserDisplay();
+                showToast('Data Synced', '로컬 스토리지 변경이 감지되어 UI를 갱신합니다.', 'warning');
+            }
+        });
+
+        function updateUserDisplay() {
+            const name = localStorage.getItem('iframe-study-username') || 'GUEST USER';
+            const theme = localStorage.getItem('iframe-study-theme') || 'slate';
+            
+            const displayEl = document.getElementById('display-username');
+            const avatarEl = document.getElementById('user-avatar');
+            
+            displayEl.textContent = name.toUpperCase();
+            
+            // Apply Theme
+            const colorMap = {
+                blue: 'bg-blue-500',
+                amber: 'bg-amber-500',
+                emerald: 'bg-emerald-500',
+                rose: 'bg-rose-500',
+                slate: 'bg-slate-500'
+            };
+            
+            avatarEl.className = `w-10 h-10 rounded-full flex items-center justify-center text-white font-bold transition-all duration-500 ${colorMap[theme] || 'bg-slate-500'}`;
+            avatarEl.textContent = name.charAt(0).toUpperCase();
+        }
+
+        // Toast System
+        function showToast(title, message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                info: 'bg-white border-blue-200 text-blue-800',
+                success: 'bg-white border-emerald-200 text-emerald-800',
+                warning: 'bg-white border-amber-200 text-amber-800',
+                indigo: 'bg-indigo-600 border-indigo-500 text-white'
+            };
+
+            const iconMap = {
+                info: 'info',
+                success: 'check-circle',
+                warning: 'alert-triangle',
+                indigo: 'message-circle'
+            };
+
+            toast.className = `toast p-5 rounded-2xl border shadow-2xl flex items-start gap-4 w-80 pointer-events-auto ${colors[type]}`;
+            toast.innerHTML = `
+                <div class="mt-1"><i data-lucide="${iconMap[type]}" class="w-5 h-5"></i></div>
+                <div>
+                    <h4 class="text-sm font-bold">${title}</h4>
+                    <p class="text-xs opacity-80 mt-1 leading-relaxed">${message}</p>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Auto remove
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 500);
+            }, 4000);
+        }
+
+        // Initial Load
+        updateUserDisplay();
+        urlBarText.textContent = window.location.origin + '/yt.html';
+    </script>
+</body>
+</html>
